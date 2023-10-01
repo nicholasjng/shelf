@@ -1,0 +1,108 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools-scm[toml]>=7.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "museum"
+description = "An fsspec-backed, type-aware artefact store client."
+keywords = ["ml-ops", "fsspec", "python"]
+requires-python = ">=3.9"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Nicholas Junge", email = "nicho.junge@gmail.com" }]
+maintainers = [
+    { name = "Nicholas Junge", email = "nicho.junge@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Version Control",
+    "Topic :: System :: Filesystems",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dependencies = ["fsspec"]
+
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/nicholasjng/museum"
+Repository = "https://github.com/nicholasjng/museum.git"
+Issues = "https://github.com/nicholasjng/museum/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=3.3.3",
+    "pytest>=7.4.0",
+    "build>=0.10.0",
+]
+yaml = ["pyyaml"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dctools = ["py.typed"]
+
+# Automatically determine version number from Git tags
+[tool.setuptools_scm]
+
+[tool.black]
+# Source https://github.com/psf/black#configuration-format
+include = "\\.pyi?$"
+line-length = 100
+target-version = ["py311"]
+
+# Black-compatible settings for isort
+# See https://black.readthedocs.io/en/stable/
+[tool.isort]
+line_length = "100"
+profile = "black"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+pretty = true
+python_version = "3.11"
+strict_optional = false
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["yaml"]
+ignore_missing_imports = true
+
+[tool.ruff]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["E", "F", "W"]
+ignore = [
+    # whitespace before colon (:), rely on black for formatting (in particular, allow spaces before ":" in list/array slices)
+    "E203",
+    # line too long, rely on black for reformatting of these, since sometimes URLs or comments can be longer
+    "E501",
+    # Allow capitalized variable names, necessary for e.g., `X_train = get_train_data()`
+    "F841",
+    # Multiple spaces before operator
+    "E221",
+]
+
+# Ignore `F401` (unused imports) in all `__init__.py` files
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+[tool.pytest.ini_options]
