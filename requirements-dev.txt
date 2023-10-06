@@ -14,17 +14,17 @@ filelock==3.12.4
     # via virtualenv
 fsspec==2023.9.2
     # via museum (pyproject.toml)
-identify==2.5.29
+identify==2.5.30
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
 nodeenv==1.8.0
     # via pre-commit
-packaging==23.1
+packaging==23.2
     # via
     #   build
     #   pytest
-platformdirs==3.10.0
+platformdirs==3.11.0
     # via virtualenv
 pluggy==1.3.0
     # via pytest
