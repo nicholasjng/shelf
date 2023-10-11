@@ -58,4 +58,4 @@ pip-compile --strip-extras pyproject.toml
 pip-compile --extra=dev --output-file=requirements-dev.txt pyproject.toml
 ```
 
-⚠️ Since the official development version is Python 3.11, please run the above `pip-compile` command in a virtual environment with Python 3.11.
+⚠️ Since the official development version is Python 3.12, please run the above `pip-compile` command in a virtual environment with Python 3.12.
