@@ -5,4 +5,4 @@
 #    pip-compile --strip-extras pyproject.toml
 #
 fsspec==2023.9.2
-    # via museum (pyproject.toml)
+    # via shelf (pyproject.toml)

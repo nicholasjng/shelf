@@ -1,9 +1,9 @@
-# Developing on `museum`
+# Developing on `shelf`
 
 Thank you for your interest in contributing to this project!
 
 Issue reports, pull requests for code and documentation are much appreciated,
-as well as any project-related communication through [GitHub Discussions](https://github.com/nicholasjng/museum/discussions).
+as well as any project-related communication through [GitHub Discussions](https://github.com/nicholasjng/shelf/discussions).
 
 ## Quickstart
 
@@ -12,13 +12,13 @@ To get started with development, you can follow these steps:
 1. Clone this repository:
 
     ```shell
-    git clone https://github.com/nicholasjng/museum.git
+    git clone https://github.com/nicholasjng/shelf.git
     ```
 
 2. Navigate to the directory and install the development dependencies into a virtual environment:
 
     ```shell
-    cd museum
+    cd shelf
     python3 -m venv venv --system-site-packages
     source venv/bin/activate
     python -m pip install -r requirements.txt -r requirements-dev.txt

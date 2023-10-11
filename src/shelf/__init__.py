@@ -1,7 +1,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("museum")
+    __version__ = version("shelf")
 except PackageNotFoundError:
     # package is not installed
     pass
