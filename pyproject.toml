@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelf"
-description = "An fsspec-backed, type-aware artefact store client."
+description = "A type-aware, fsspec-backed general artefact store."
 keywords = ["ml-ops", "fsspec", "python"]
 requires-python = ">=3.9"
 readme = "README.md"
