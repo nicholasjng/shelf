@@ -5,3 +5,6 @@ try:
 except PackageNotFoundError:
     # package is not installed
     pass
+
+
+from .registry import deregister_type, get_hooks, register_type
