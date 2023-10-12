@@ -37,33 +37,34 @@ def get_hooks(t: type, strict: bool = False, bound: type | None = None) -> IO:
     ----------
     t: The Python type to return registered hooks for.
     strict: Whether to allow returning a supertype's registered hooks if any are found.
-    bound: A type bound at which to stop walking up the requested type's method resolution order (MRO) when allowing supertype matches (i.e., when strict=False).
+    bound: A type bound (inclusive) at which to stop walking up the requested type's method resolution order (MRO) when allowing supertype matches (i.e., when strict=False).
 
     Returns
     -------
-    A tuple of registered hooks.
+    A tuple of registered ser/de hooks.
 
     Raises
     ------
-    KeyError: If the requested type (or all of its eligible supertypes) has no serialization/deserialization hooks available.
+    KeyError: If the requested type (or all of its eligible supertypes) has no ser/de hooks available.
     """
 
-    if not strict:
-        if hasattr(t, "__mro__"):
-            type_order = t.__mro__[:-1]
-        else:
-            type_order = (t,)
-
-        for typ in type_order:
-            try:
-                return _registry[typ]
-            except KeyError:
-                pass
-
-            if type == bound:
-                raise KeyError(f"no ser/de hooks registered for type {t} or any suitable supertype")
+    if hasattr(t, "__mro__") and not strict:
+        # we exclude object as a type explicitly.
+        type_order = t.__mro__[:-1]
     else:
-        if t in _registry:
-            return _registry[t]
+        type_order = (t,)
 
-    raise KeyError(f"no ser/de hooks registered for type {t}")
+    for typ in type_order:
+        try:
+            return _registry[typ]
+        except KeyError:
+            pass
+
+        if type == bound:
+            break
+
+    msg = f"no ser/de hooks registered for type {t}"
+    if not strict:
+        msg += f" or any suitable supertype (considered: {type_order})"
+
+    raise KeyError(msg)
