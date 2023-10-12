@@ -55,7 +55,7 @@ zip-safe = false
 where = ["src"]
 
 [tool.setuptools.package-data]
-dctools = ["py.typed"]
+shelf = ["py.typed"]
 
 # Automatically determine version number from Git tags
 [tool.setuptools_scm]
