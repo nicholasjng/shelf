@@ -118,3 +118,5 @@ syft-output.json
 # direnv
 .envrc
 .direnv
+
+sandbox
