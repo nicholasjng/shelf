@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelf"
-description = "A type-aware, fsspec-backed general artefact store."
+description = "A type-aware, fsspec-backed general artifact store."
 keywords = ["ml-ops", "fsspec", "python"]
 requires-python = ">=3.9"
 readme = "README.md"
@@ -24,13 +24,12 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Software Development :: Version Control",
     "Topic :: System :: Filesystems",
     "Topic :: Utilities",
     "Typing :: Typed",
 ]
 
-dependencies = ["fsspec"]
+dependencies = ["fsspec", "pyyaml"]
 
 dynamic = ["version"]
 
@@ -45,7 +44,6 @@ dev = [
     "pytest>=7.4.0",
     "build>=1.0.0",
 ]
-yaml = ["pyyaml"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -80,11 +78,11 @@ target-version = "py311"
 # pycodestyle (`E`, `W`), isort (`I`), and Pyflakes (`F`) codes.
 select = ["E", "F", "I", "W"]
 ignore = [
-    # whitespace before colon (:)
+    # Whitespace before colon (:)
     "E203",
     # Multiple spaces before operator
     "E221",
-    # line too long
+    # Line too long
     "E501",
     # Allow capitalized variable names
     "F841",
