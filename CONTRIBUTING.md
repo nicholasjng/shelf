@@ -21,8 +21,8 @@ To get started with development, you can follow these steps:
     cd shelf
     python3 -m venv venv --system-site-packages
     source venv/bin/activate
-    python -m pip install -r requirements.txt -r requirements-dev.txt
-    python -m pip install -e . --no-deps
+    python -m pip install -r requirements-dev.txt
+    python -m pip install -e .
     ```
 
 3. After making your changes, verify they adhere to the Python code style by running `pre-commit`:
@@ -54,7 +54,6 @@ After adding the dependency in either of these sections, run `pip-compile` to pi
 
 ```shell
 python -m pip install --upgrade pip-tools
-pip-compile --strip-extras pyproject.toml
 pip-compile --extra=dev --output-file=requirements-dev.txt pyproject.toml
 ```
 
