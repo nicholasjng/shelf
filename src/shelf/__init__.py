@@ -7,4 +7,5 @@ except PackageNotFoundError:
     pass
 
 
-from .registry import deregister_type, get_hooks, register_type
+from .registry import deregister_type, lookup, register_type
+from .shelf import Shelf

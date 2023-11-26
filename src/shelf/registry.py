@@ -6,7 +6,6 @@ class IO(NamedTuple):
     serializer: Callable
     deserializer: Callable
 
-
 # internal, mutable
 _registry: dict[type, IO] = {}
 
@@ -17,7 +16,7 @@ registry = types.MappingProxyType(_registry)
 def register_type(
     t: type, serializer: Callable, deserializer: Callable, clobber: bool = False
 ) -> None:
-    """Register serialization/deserialization hooks for a given type t."""
+    """Register serializer and deserializer for a given type t."""
     if t in _registry and not clobber:
         raise RuntimeError(f"type {t} is already registered, rerun with clobber=True to override")
 
@@ -25,46 +24,49 @@ def register_type(
 
 
 def deregister_type(t: type) -> None:
-    """Remove a type's serialize/deserialize hooks from the type registry."""
+    """Remove a type's serializer and deserializer from the type registry."""
     _registry.pop(t, None)
 
 
-def get_hooks(t: type, strict: bool = False, bound: type | None = None) -> IO:
+def lookup(t: type, strict: bool = True, bound: type | None = None) -> IO:
     """
-    Returns a type's registered serialization/deserialization hooks.
+    Returns a type's registered serialization/deserialization functions.
 
     Parameters
     ----------
-    t: The Python type to return registered hooks for.
-    strict: Whether to allow returning a supertype's registered hooks if any are found.
-    bound: A type bound (inclusive) at which to stop walking up the requested type's method resolution order (MRO) when allowing supertype matches (i.e., when strict=False).
+    t: A Python type for which to return the registered IO.
+    strict: Only allow exact type matches instead of any supertype's registered IO if found.
+    bound: An inclusive type bound at which to stop walking up the requested type's
+    method resolution order (MRO) when allowing supertype matches (i.e., when `strict=False`).
 
     Returns
     -------
-    A tuple of registered ser/de hooks.
+    A registered serializer/deserializer tuple.
 
     Raises
     ------
-    KeyError: If the requested type (or all of its eligible supertypes) has no ser/de hooks available.
+    KeyError: If the requested type (and all of its eligible supertypes) has no ser/de available.
     """
 
     if hasattr(t, "__mro__") and not strict:
-        # we exclude object as a type explicitly.
-        type_order = t.__mro__[:-1]
+        type_order = t.__mro__
     else:
         type_order = (t,)
 
+    n = len(type_order)
     for typ in type_order:
         try:
             return _registry[typ]
         except KeyError:
             pass
 
-        if type == bound:
+        if typ == bound:
+            # `bound` is inclusive
+            n = type_order.index(bound) + 1
             break
 
-    msg = f"no ser/de hooks registered for type {t}"
+    msg = f"no IO registered for type {t}"
     if not strict:
-        msg += f" or any suitable supertype (considered: {type_order})"
+        msg += f" or any suitable supertype (considered {type_order[:n]})"
 
     raise KeyError(msg)
