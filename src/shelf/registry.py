@@ -6,6 +6,7 @@ class IO(NamedTuple):
     serializer: Callable
     deserializer: Callable
 
+
 # internal, mutable
 _registry: dict[type, IO] = {}
 
