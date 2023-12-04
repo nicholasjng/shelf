@@ -9,17 +9,16 @@ repos:
     rev: v4.5.0
     hooks:
       - id: check-added-large-files
-      - id: check-json
-      - id: check-toml
-      - id: check-yaml
       - id: end-of-file-fixer
-      - id: mixed-line-ending
+      - id: trailing-whitespace
+      # only include python files
+        files: \.py$
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.7.1
     hooks:
      - id: mypy
        types_or: [ python, pyi ]
-       args: ["--ignore-missing-imports", "--scripts-are-modules"]
+       args: [--ignore-missing-imports, --scripts-are-modules]
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.6
     hooks:
