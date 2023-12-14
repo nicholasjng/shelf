@@ -7,7 +7,8 @@ import shelf
 def test_json_roundtrip(tmp_path: Path) -> None:
     """Test a simple data artifact JSON roundtrip."""
 
-    def json_dump(d: dict, fname: str) -> str:
+    def json_dump(d: dict) -> str:
+        fname = "dump.json"
         with open(fname, "w") as f:
             json.dump(d, f)
         return fname
@@ -18,11 +19,11 @@ def test_json_roundtrip(tmp_path: Path) -> None:
 
     shelf.register_type(dict, json_dump, json_load)
 
-    s = shelf.Shelf(prefixes=[str(tmp_path)])
+    s = shelf.Shelf(prefix=tmp_path)
 
     data = {"a": 1, "b": 2}
 
     s.put(data, "myobj.json")
-    (data2,) = s.get("myobj.json", dict)
+    data2 = s.get("myobj.json", dict)
 
     assert data == data2
