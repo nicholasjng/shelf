@@ -29,7 +29,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = ["fsspec", "pyyaml"]
+dependencies = ["fsspec"]
 
 dynamic = ["version"]
 
@@ -40,9 +40,9 @@ Issues = "https://github.com/nicholasjng/shelf/issues"
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.0.0",
     "pre-commit>=3.3.3",
     "pytest>=7.4.0",
-    "build>=1.0.0",
 ]
 
 [tool.setuptools]
@@ -79,14 +79,7 @@ target-version = "py311"
 # pycodestyle (`E`, `W`), isort (`I`), and Pyflakes (`F`) codes.
 select = ["E", "F", "I", "W"]
 ignore = [
-    # Whitespace before colon (:)
-    "E203",
-    # Multiple spaces before operator
-    "E221",
-    # Line too long
-    "E501",
-    # Allow capitalized variable names
-    "F841",
+    "E501", # Line too long
 ]
 
 # Ignore `F401` (unused imports) in all `__init__.py` files
