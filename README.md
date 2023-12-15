@@ -12,9 +12,9 @@ Here's how you register a custom neural network type that uses [pickle](https://
 
 ```python
 # my_model.py
-
-import shelf
+import numpy as np
 import pickle
+import shelf
 
 
 class MyModel:
@@ -74,17 +74,17 @@ def train():
     shelf.put(model, "az://my-blob/my-model.pkl")
 ```
 
-Conversely, if you want to download a remotely stored model again:
+Conversely, if you want to reinstantiate a remotely stored model:
 
 ```python
 def score():
-    model: MyModel = shelf.get("s3://my-bucket/my-model.pkl")
+    model: MyModel = shelf.get("s3://my-bucket/my-model.pkl", MyModel)
     accuracy = model.score(np.random.randn(100))
     
     print(f"And here's how accurately it predicts: {accuracy:.2%}")
 ```
 
-And just like that, push and pull your custom models and data artifacts anywhere you like - your service just has to have a supporting `fsspec` [filesystem implementation.](https://github.com/fsspec/filesystem_spec/blob/master/fsspec/registry.py)
+And just like that, push and pull your custom models and data artifacts anywhere you like - your service of choice just has to have a supporting `fsspec` [filesystem implementation](https://github.com/fsspec/filesystem_spec/blob/master/fsspec/registry.py) available.
 
 ## Installation
 
