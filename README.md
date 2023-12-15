@@ -1,8 +1,8 @@
-# `shelf` - a lightweight Python artefact store client
+# shelf - a lightweight Python artefact store client
 
 ## What is it?
 
-`shelf` combines the [pytree registry](https://jax.readthedocs.io/en/latest/pytrees.html) from JAX with the [fsspec](https://filesystem-spec.readthedocs.io/en/latest/index.html) project.
+shelf combines the [pytree registry](https://jax.readthedocs.io/en/latest/pytrees.html) from JAX with the [fsspec](https://filesystem-spec.readthedocs.io/en/latest/index.html) project.
 
 Similarly to what you do in JAX, registering a pair of serialization and deserialization callbacks allows you to easily save your custom Python types as files _anywhere_ fsspec can reach!
 
@@ -78,7 +78,7 @@ Conversely, if you want to reinstantiate a remotely stored model:
 
 ```python
 def score():
-    model: MyModel = shelf.get("s3://my-bucket/my-model.pkl", MyModel)
+    model = shelf.get("s3://my-bucket/my-model.pkl", MyModel)
     accuracy = model.score(np.random.randn(100))
     
     print(f"And here's how accurately it predicts: {accuracy:.2%}")
