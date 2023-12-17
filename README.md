@@ -15,6 +15,7 @@ Here's how you register a custom neural network type that uses [pickle](https://
 import numpy as np
 import pickle
 import shelf
+import os
 
 
 class MyModel:
@@ -28,9 +29,9 @@ class MyModel:
         return 1.
 
 
-def save_to_disk(model: MyModel) -> str:
-    """Dumps the model to disk using `pickle`."""
-    fname = "my-model.pkl"
+def save_to_disk(model: MyModel, tmpdir: str) -> str:
+    """Dumps the model to the directory ``tmpdir`` using `pickle`."""
+    fname = os.path.join(tmpdir, "my-model.pkl")
     with open(fname, "wb") as f:
         pickle.dump(model, f)
     return fname
