@@ -9,6 +9,7 @@ from fsspec import AbstractFileSystem, filesystem
 from fsspec.utils import get_protocol
 
 import shelf.registry as registry
+from shelf.util import is_fully_qualified
 
 T = TypeVar("T")
 
@@ -53,7 +54,8 @@ class Shelf:
         self.fsconfig = fsconfig or {}
 
     def get(self, rpath: str, expected_type: type[T]) -> T:
-        rpath = self.prefix + rpath
+        if not is_fully_qualified(rpath):
+            rpath = self.prefix + rpath
 
         # load machinery early, so that we do not download
         # if the type is not registered.
@@ -98,7 +100,9 @@ class Shelf:
         # if the type is not registered.
         serde = registry.lookup(type(obj))
 
-        rpath = self.prefix + rpath
+        if not is_fully_qualified(rpath):
+            rpath = self.prefix + rpath
+
         protocol = get_protocol(rpath)
 
         # file system-specific options.
