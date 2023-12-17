@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import shelf
@@ -7,8 +8,8 @@ import shelf
 def test_json_roundtrip(tmp_path: Path) -> None:
     """Test a simple data artifact JSON roundtrip."""
 
-    def json_dump(d: dict) -> str:
-        fname = "dump.json"
+    def json_dump(d: dict, tmpdir: str) -> str:
+        fname = os.path.join(tmpdir, "dump.json")
         with open(fname, "w") as f:
             json.dump(d, f)
         return fname

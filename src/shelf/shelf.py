@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import contextlib
 import os
 import tempfile
@@ -6,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal, TypeVar
 
 from fsspec import AbstractFileSystem, filesystem
-from fsspec.utils import get_protocol
+from fsspec.utils import get_protocol, stringify_path
 
 import shelf.registry as registry
 from shelf.util import is_fully_qualified
@@ -55,7 +57,7 @@ class Shelf:
 
     def get(self, rpath: str, expected_type: type[T]) -> T:
         if not is_fully_qualified(rpath):
-            rpath = self.prefix + rpath
+            rpath = os.path.join(self.prefix, rpath)
 
         # load machinery early, so that we do not download
         # if the type is not registered.
@@ -83,15 +85,16 @@ class Shelf:
 
         with contextlib.ExitStack() as stack:
             tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
-            stack.enter_context(contextlib.chdir(tmpdir))
 
             # trailing slash tells fsspec to download files into `lpath`
-            lpath = tmpdir + os.sep
+            lpath = stringify_path(tmpdir.rstrip(os.sep) + os.sep)
             fs.get(rpath, lpath, **download_options)
 
             # TODO: Find a way to pass files in expected order
-            filenames = [p.name for p in Path(tmpdir).iterdir() if p.is_file()]
-            obj: T = serde.deserializer(*filenames)
+            files = [str(p) for p in Path(tmpdir).iterdir() if p.is_file()]
+            if not files:
+                raise ValueError(f"no files found for rpath {rpath!r}")
+            obj: T = serde.deserializer(*files)
 
         return obj
 
@@ -101,7 +104,7 @@ class Shelf:
         serde = registry.lookup(type(obj))
 
         if not is_fully_qualified(rpath):
-            rpath = self.prefix + rpath
+            rpath = os.path.join(self.prefix, rpath)
 
         protocol = get_protocol(rpath)
 
@@ -124,10 +127,8 @@ class Shelf:
 
         with contextlib.ExitStack() as stack:
             tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
-            # chdir into the temporary to be able to work with filenames only
-            stack.enter_context(contextlib.chdir(tmpdir))
             # TODO: What about multiple lpaths?
-            lpath = serde.serializer(obj)
+            lpath = serde.serializer(obj, tmpdir)
 
             upload_options = fsconfig.get("upload", {})
             fs.put(lpath, rpath, **upload_options)
