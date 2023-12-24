@@ -7,5 +7,5 @@ except PackageNotFoundError:
     pass
 
 
+from .core import Shelf
 from .registry import deregister_type, lookup, register_type
-from .shelf import Shelf
