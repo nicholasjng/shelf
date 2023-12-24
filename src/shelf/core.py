@@ -4,39 +4,15 @@ import contextlib
 import os
 import tempfile
 from os import PathLike
-from pathlib import Path
 from typing import Any, Literal, TypeVar
 
 from fsspec import AbstractFileSystem, filesystem
-from fsspec.utils import get_protocol, stringify_path
+from fsspec.utils import get_protocol
 
-import shelf.registry as registry
-from shelf.util import is_fully_qualified
+import shelf.registry
+from shelf.util import is_fully_qualified, with_trailing_sep
 
 T = TypeVar("T")
-
-
-def load_config(filename: str | Path) -> dict[str, Any]:
-    def get_project_root() -> Path:
-        """
-        Returns project root if currently in a project (sub-)folder,
-        otherwise the current directory.
-        """
-        cwd = Path.cwd()
-        for p in (cwd, *cwd.parents):
-            if (p / "setup.py").exists() or (p / "pyproject.toml").exists():
-                return p
-        return cwd
-
-    config: dict[str, Any] = {}
-
-    for loc in [Path.home(), get_project_root()]:
-        if (pp := loc / filename).exists():
-            with open(pp, "r") as f:
-                import yaml
-
-                config = yaml.safe_load(f)
-    return config
 
 
 class Shelf:
@@ -46,6 +22,7 @@ class Shelf:
         cache_dir: str | PathLike[str] | None = None,
         cache_type: Literal["blockcache", "filecache", "simplecache"] = "filecache",
         fsconfig: dict[str, dict[str, Any]] | None = None,
+        configfile: str | PathLike[str] | None = None,
     ):
         self.prefix = str(prefix)
 
@@ -53,17 +30,24 @@ class Shelf:
         self.cache_dir = cache_dir
 
         # config object holding storage options for file systems
-        self.fsconfig = fsconfig or {}
+        # TODO: Validate schema for inputs
+        if configfile and not fsconfig:
+            import yaml
+
+            with open(configfile, "r") as f:
+                self.fsconfig = yaml.safe_load(f)
+        else:
+            self.fsconfig = fsconfig or {}
 
     def get(self, rpath: str, expected_type: type[T]) -> T:
+        # load machinery early, so that we do not download
+        # if the type is not registered.
+        serde = shelf.registry.lookup(expected_type)
+
         if not is_fully_qualified(rpath):
             rpath = os.path.join(self.prefix, rpath)
 
-        # load machinery early, so that we do not download
-        # if the type is not registered.
-        serde = registry.lookup(expected_type)
         protocol = get_protocol(rpath)
-
         # file system-specific options.
         config = self.fsconfig.get(protocol, {})
         storage_options = config.get("storage", {})
@@ -81,27 +65,43 @@ class Shelf:
 
         fs: AbstractFileSystem = filesystem(proto, **kwargs)
 
-        download_options = config.get("download", {})
+        try:
+            rfiles = fs.ls(rpath, detail=False)
+        # some file systems (e.g. local) don't allow filenames in `ls`
+        except NotADirectoryError:
+            rfiles = [fs.info(rpath)["name"]]
+
+        if not rfiles:
+            raise FileNotFoundError(rpath)
 
         with contextlib.ExitStack() as stack:
             tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
+            # TODO: Push a unique directory (e.g. checksum) in front to
+            #  create a directory
 
-            # trailing slash tells fsspec to download files into `lpath`
-            lpath = stringify_path(tmpdir.rstrip(os.sep) + os.sep)
-            fs.get(rpath, lpath, **download_options)
+            # explicit file lists have the side effect that remote subdirectory structures
+            # are flattened.
+            lfiles = [os.path.join(tmpdir, os.path.basename(f)) for f in rfiles]
 
-            # TODO: Find a way to pass files in expected order
-            files = [str(p) for p in Path(tmpdir).iterdir() if p.is_file()]
-            if not files:
-                raise ValueError(f"no files found for rpath {rpath!r}")
-            obj: T = serde.deserializer(*files)
+            download_options = config.get("download", {})
+            fs.get(rfiles, lfiles, **download_options)
+
+            # TODO: Support deserializer interfaces taking unraveled tuples, i.e. filenames
+            #  as arguments in the multifile case
+            lpath: str | tuple[str, ...]
+            if len(lfiles) == 1:
+                lpath = lfiles[0]
+            else:
+                lpath = tuple(lfiles)
+
+            obj: T = serde.deserializer(lpath)
 
         return obj
 
     def put(self, obj: T, rpath: str) -> None:
         # load machinery early, so that we do not download
         # if the type is not registered.
-        serde = registry.lookup(type(obj))
+        serde = shelf.registry.lookup(type(obj))
 
         if not is_fully_qualified(rpath):
             rpath = os.path.join(self.prefix, rpath)
@@ -127,10 +127,15 @@ class Shelf:
 
         with contextlib.ExitStack() as stack:
             tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
-            # TODO: What about multiple lpaths?
             lpath = serde.serializer(obj, tmpdir)
 
+            recursive = isinstance(lpath, (list, tuple))
+            if recursive:
+                # signals fsspec to put all files into rpath directory
+                rpath = with_trailing_sep(rpath)
+
             upload_options = fsconfig.get("upload", {})
-            fs.put(lpath, rpath, **upload_options)
+            # TODO: Construct explicit lists always to hit the fast path of fs.put()
+            fs.put(lpath, rpath, recursive=recursive, **upload_options)
 
         return fs.info(rpath)
