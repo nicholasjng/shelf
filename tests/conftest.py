@@ -1,8 +1,12 @@
-from typing import Generator
+from pathlib import Path
+from typing import Any, Generator
 
 import pytest
+import yaml
 
-from shelf.registry import _registry
+import shelf.registry
+
+testdir = Path(__file__).parent
 
 
 @pytest.fixture(autouse=True)
@@ -11,4 +15,10 @@ def empty_registry() -> Generator[None, None, None]:
     try:
         yield
     finally:
-        _registry.clear()
+        shelf.registry._registry.clear()
+
+
+@pytest.fixture(scope="session")
+def fsconfig() -> dict[str, dict[str, Any]]:
+    with open(testdir / "shelfconfig.yaml", "r") as f:
+        return yaml.safe_load(f)
