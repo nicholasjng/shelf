@@ -1,70 +1,52 @@
 from __future__ import annotations
 
-import contextlib
 import os
+import shutil
 import tempfile
-from os import PathLike
-from typing import Any, Literal, TypeVar
+import weakref
+from typing import Any, TypeVar
 
-from fsspec import AbstractFileSystem, filesystem
-from fsspec.utils import get_protocol
+from fsspec.utils import stringify_path
 
 import shelf.registry
-from shelf.util import is_fully_qualified, with_trailing_sep
+from shelf.types import CacheOptions, Context
+from shelf.util import filesystem_from_uri, with_trailing_sep
 
 T = TypeVar("T")
 
 
 class Shelf:
-    def __init__(
+    def __init__(self, cache_options: CacheOptions | None = None):
+        self.cache_options = cache_options
+
+        _tempdir = tempfile.mkdtemp()
+        self._tempdir = _tempdir
+        weakref.finalize(self, self._cleanup_tempdir, _tempdir)
+
+    @property
+    def tempdir(self) -> str:
+        return self._tempdir
+
+    @staticmethod
+    def _cleanup_tempdir(tempdir: str) -> None:
+        # TODO: Use TemporaryDirectory's builtin finalizer?
+        shutil.rmtree(tempdir, ignore_errors=True)
+
+    def get(
         self,
-        prefix: str | os.PathLike[str] = "",
-        cache_dir: str | PathLike[str] | None = None,
-        cache_type: Literal["blockcache", "filecache", "simplecache"] = "filecache",
-        fsconfig: dict[str, dict[str, Any]] | None = None,
-        configfile: str | PathLike[str] | None = None,
-    ):
-        self.prefix = str(prefix)
-
-        self.cache_type = cache_type
-        self.cache_dir = cache_dir
-
-        # config object holding storage options for file systems
-        # TODO: Validate schema for inputs
-        if configfile and not fsconfig:
-            import yaml
-
-            with open(configfile, "r") as f:
-                self.fsconfig = yaml.safe_load(f)
-        else:
-            self.fsconfig = fsconfig or {}
-
-    def get(self, rpath: str, expected_type: type[T]) -> T:
-        # load machinery early, so that we do not download
-        # if the type is not registered.
+        rpath: str | os.PathLike[str],
+        expected_type: type[T],
+        storage_options: dict[str, Any] | None = None,
+        download_options: dict[str, Any] | None = None,
+    ) -> T:
+        # load machinery early, so we don't download if the type is not registered.
         serde = shelf.registry.lookup(expected_type)
 
-        if not is_fully_qualified(rpath):
-            rpath = os.path.join(self.prefix, rpath)
+        rpath = stringify_path(rpath)
 
-        protocol = get_protocol(rpath)
-        # file system-specific options.
-        config = self.fsconfig.get(protocol, {})
-        storage_options = config.get("storage", {})
+        fs = filesystem_from_uri(rpath, self.cache_options, storage_options)
 
-        if self.cache_dir is not None:
-            proto = self.cache_type
-            kwargs = {
-                "target_protocol": protocol,
-                "target_options": storage_options,
-                "cache_storage": self.cache_dir,
-            }
-        else:
-            proto = protocol
-            kwargs = storage_options
-
-        fs: AbstractFileSystem = filesystem(proto, **kwargs)
-
+        rfiles: list[str]
         try:
             rfiles = fs.ls(rpath, detail=False)
         # some file systems (e.g. local) don't allow filenames in `ls`
@@ -74,68 +56,43 @@ class Shelf:
         if not rfiles:
             raise FileNotFoundError(rpath)
 
-        with contextlib.ExitStack() as stack:
-            tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
-            # TODO: Push a unique directory (e.g. checksum) in front to
-            #  create a directory
+        # explicit file lists have the side effect that remote subdirectory structures
+        # are flattened.
+        lfiles = [os.path.join(self.tempdir, os.path.basename(f)) for f in rfiles]
+        fs.get(rfiles, lfiles, **(download_options or {}))
 
-            # explicit file lists have the side effect that remote subdirectory structures
-            # are flattened.
-            lfiles = [os.path.join(tmpdir, os.path.basename(f)) for f in rfiles]
-
-            download_options = config.get("download", {})
-            fs.get(rfiles, lfiles, **download_options)
-
-            # TODO: Support deserializer interfaces taking unraveled tuples, i.e. filenames
-            #  as arguments in the multifile case
-            lpath: str | tuple[str, ...]
-            if len(lfiles) == 1:
-                lpath = lfiles[0]
-            else:
-                lpath = tuple(lfiles)
-
-            obj: T = serde.deserializer(lpath)
+        # TODO: For more secure access, only allow lfiles as file descriptors
+        with Context(self.tempdir, filenames=lfiles) as ctx:
+            obj = serde.deserializer(ctx)
 
         return obj
 
-    def put(self, obj: T, rpath: str) -> None:
-        # load machinery early, so that we do not download
-        # if the type is not registered.
-        serde = shelf.registry.lookup(type(obj))
+    def put(
+        self,
+        obj: T,
+        rpath: str | os.PathLike[str],
+        storage_options: dict[str, Any] | None = None,
+        upload_options: dict[str, Any] | None = None,
+    ) -> None:
+        # load machinery early, so we don't download if the type is not registered.
+        objtype: type[T] = type(obj)
 
-        if not is_fully_qualified(rpath):
-            rpath = os.path.join(self.prefix, rpath)
+        serde = shelf.registry.lookup(objtype)
 
-        protocol = get_protocol(rpath)
+        rpath = stringify_path(rpath)
 
-        # file system-specific options.
-        fsconfig = self.fsconfig.get(protocol, {})
-        storage_options = fsconfig.get("storage", {})
+        fs = filesystem_from_uri(rpath, self.cache_options, storage_options)
 
-        if self.cache_dir is not None:
-            proto = self.cache_type
-            kwargs = {
-                "target_protocol": protocol,
-                "target_options": storage_options,
-                "cache_storage": self.cache_dir,
-            }
+        with Context(self.tempdir) as ctx:
+            serde.serializer(obj, ctx)
+            lpaths = ctx.filenames
+
+        rpaths: str | list[str]
+        if len(lpaths) > 1:
+            # signals fsspec to put all files into rpath directory
+            # TODO: Construct list always to hit the fast path of fs.put()
+            rpaths = with_trailing_sep(rpath)
         else:
-            proto = protocol
-            kwargs = storage_options
+            rpaths = [rpath]
 
-        fs: AbstractFileSystem = filesystem(proto, **kwargs)
-
-        with contextlib.ExitStack() as stack:
-            tmpdir = stack.enter_context(tempfile.TemporaryDirectory())
-            lpath = serde.serializer(obj, tmpdir)
-
-            recursive = isinstance(lpath, (list, tuple))
-            if recursive:
-                # signals fsspec to put all files into rpath directory
-                rpath = with_trailing_sep(rpath)
-
-            upload_options = fsconfig.get("upload", {})
-            # TODO: Construct explicit lists always to hit the fast path of fs.put()
-            fs.put(lpath, rpath, recursive=recursive, **upload_options)
-
-        return fs.info(rpath)
+        fs.put(lpaths, rpaths, **(upload_options or {}))
