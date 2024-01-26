@@ -1,29 +1,31 @@
 from __future__ import annotations
 
 import types
-from typing import Callable, NamedTuple
+from typing import Callable, TypeVar
 
+from shelf.types import Context, IOPair
 
-class IO(NamedTuple):
-    serializer: Callable
-    deserializer: Callable
+T = TypeVar("T")
 
 
 # internal, mutable
-_registry: dict[type, IO] = {}
+_registry: dict[type, IOPair] = {}
 
 # external, immutable
 registry = types.MappingProxyType(_registry)
 
 
 def register_type(
-    t: type, serializer: Callable, deserializer: Callable, clobber: bool = False
+    t: type[T],
+    serializer: Callable[[T, Context], None],
+    deserializer: Callable[[Context], T],
+    clobber: bool = False,
 ) -> None:
     """Register serializer and deserializer for a given type t."""
     if t in _registry and not clobber:
         raise RuntimeError(f"type {t} is already registered, rerun with clobber=True to override")
 
-    _registry[t] = IO(serializer, deserializer)
+    _registry[t] = IOPair(serializer, deserializer)
 
 
 def deregister_type(t: type) -> None:
@@ -31,7 +33,7 @@ def deregister_type(t: type) -> None:
     _registry.pop(t, None)
 
 
-def lookup(t: type, strict: bool = True, bound: type | None = None) -> IO:
+def lookup(t: type[T], strict: bool = True, bound: type | None = None) -> IOPair[T]:
     """
     Returns a type's registered serialization/deserialization functions.
 
