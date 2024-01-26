@@ -9,3 +9,4 @@ except PackageNotFoundError:
 
 from .core import Shelf
 from .registry import deregister_type, lookup, register_type
+from .types import Context

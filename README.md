@@ -29,19 +29,18 @@ class MyModel:
         return 1.
 
 
-def save_to_disk(model: MyModel, tmpdir: str) -> str:
+def save_to_disk(model: MyModel, ctx: shelf.Context) -> None:
     """Dumps the model to the directory ``tmpdir`` using `pickle`."""
-    fname = os.path.join(tmpdir, "my-model.pkl")
-    with open(fname, "wb") as f:
-        pickle.dump(model, f)
-    return fname
+    fp = ctx.file("my-model.pkl", mode="wb")
+    pickle.dump(model, fp)
 
 
-def load_from_disk(fname: str) -> MyModel:
+def load_from_disk(ctx: shelf.Context) -> MyModel:
     """Reloads the previously pickled model."""
-    with open(fname, "rb") as f:
-        model: MyModel = pickle.load(f)
-        return model
+    fname, = ctx.filenames
+    fp = ctx.file(fname, mode="rb")
+    model: MyModel = pickle.load(fp)
+    return model
 
 
 shelf.register_type(MyModel, save_to_disk, load_from_disk)
