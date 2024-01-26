@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Any, Generator
+from typing import Generator
 
 import pytest
-import yaml
 
 import shelf.registry
 
@@ -16,9 +15,3 @@ def empty_registry() -> Generator[None, None, None]:
         yield
     finally:
         shelf.registry._registry.clear()
-
-
-@pytest.fixture(scope="session")
-def fsconfig() -> dict[str, dict[str, Any]]:
-    with open(testdir / "shelfconfig.yaml", "r") as f:
-        return yaml.safe_load(f)
